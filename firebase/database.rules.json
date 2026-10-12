@@ -1,0 +1,124 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+
+    "users": {
+      "$uid": {
+        ".read": "auth != null && auth.uid === $uid",
+
+        "profile": {
+          ".write": "auth != null && auth.uid === $uid",
+          ".validate": "newData.hasChildren(['name', 'createdAt']) && newData.child('name').isString() && newData.child('name').val().length > 0 && newData.child('name').val().length <= 20"
+        },
+
+        "cosmetics": {
+          ".write": "auth != null && auth.uid === $uid",
+          "skin": {
+            ".validate": "newData.isString() && (newData.val() === 'classic' || root.child('users/'+$uid+'/inventory/skins/'+newData.val()).exists())"
+          },
+          "hat": {
+            ".validate": "newData.val() == null || (newData.isString() && (newData.val() === 'none' || root.child('users/'+$uid+'/inventory/hats/'+newData.val()).exists()))"
+          },
+          "trail": {
+            ".validate": "newData.val() == null || (newData.isString() && (newData.val() === 'none' || root.child('users/'+$uid+'/inventory/trails/'+newData.val()).exists()))"
+          }
+        },
+
+        "wallet": {
+          ".write": "auth != null && auth.uid === $uid && !data.exists()",
+          "coins": {
+            ".validate": "newData.isNumber() && newData.val() === 100"
+          }
+        },
+
+        "inventory": {
+          ".write": false
+        },
+
+        "stats": {
+          ".write": "auth != null && auth.uid === $uid && !data.exists()",
+          ".validate": "newData.hasChildren(['totalRuns','bestScore']) && newData.child('totalRuns').val() === 0 && newData.child('bestScore').val() === 0"
+        }
+      }
+    },
+
+    "rooms": {
+      "$roomId": {
+        ".read": "auth != null",
+
+        ".write": "(!data.exists() && newData.child('metadata/host').val() === auth.uid) || (!newData.exists() && data.child('metadata/host').val() === auth.uid && data.child('metadata/status').val() === 'lobby')",
+
+        "metadata": {
+          ".write": "auth != null && ((!data.exists() && newData.child('host').val() === auth.uid) || (data.exists() && data.child('host').val() === auth.uid))",
+          ".validate": "newData.hasChildren(['host','mode','maxPlayers','status','seed']) && ((!data.exists() && newData.child('host').val() === auth.uid) || newData.child('host').val() === data.child('host').val())"
+        },
+
+        "state": {
+          ".write": "root.child('rooms/' + $roomId + '/metadata/host').val() === auth.uid"
+        },
+
+        "players": {
+          "$playerId": {
+            ".write": "auth != null && auth.uid === $playerId && (data.exists() || root.child('rooms/'+$roomId+'/metadata/status').val() === 'lobby')",
+            ".validate": "newData.hasChildren(['name', 'alive', 'score']) && newData.child('name').isString() && newData.child('name').val().length <= 20 && newData.child('score').isNumber() && newData.child('score').val() >= 0 && newData.child('score').val() <= 500000",
+            "name": { ".validate": "newData.isString() && newData.val().length <= 20" },
+            "alive": { ".validate": "newData.isBoolean()" },
+            "score": { ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 500000" },
+            "ready": { ".validate": "newData.isBoolean()" },
+            "state": { ".validate": "newData.isString() && newData.val().length <= 20" },
+            "skin": { ".validate": "newData.isString() && newData.val().length <= 30" },
+            "hat": { ".validate": "newData.val() == null || (newData.isString() && newData.val().length <= 30)" },
+            "trail": { ".validate": "newData.val() == null || (newData.isString() && newData.val().length <= 30)" },
+            "uid": { ".validate": "newData.val() === auth.uid" },
+            "lastUpdate": { ".validate": "true" },
+            "$other": { ".validate": false }
+          }
+        },
+
+        "events": {
+          ".write": "auth != null && root.child('rooms/'+$roomId+'/players/'+auth.uid).exists()",
+          "$eventId": {
+            ".validate": "newData.hasChildren(['type', 'uid']) && newData.child('uid').val() === auth.uid"
+          }
+        }
+      }
+    },
+
+    "leaderboards": {
+      "allTime": {
+        ".read": "auth != null",
+        ".indexOn": ["score"],
+        "$uid": {
+          ".write": "auth != null && auth.uid === $uid",
+          ".validate": "newData.hasChildren(['name', 'score', 'timestamp', 'uid']) && newData.child('uid').val() === auth.uid && newData.child('name').isString() && newData.child('name').val().length <= 20 && newData.child('score').isNumber() && newData.child('score').val() >= 0 && newData.child('score').val() <= 500000 && (!data.exists() || newData.child('score').val() >= data.child('score').val()) && newData.child('timestamp').val() === now"
+        }
+      },
+      "daily": {
+        "$date": {
+          ".read": "auth != null",
+          ".indexOn": ["score"],
+          ".validate": "$date.matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/)",
+          "$uid": {
+            ".write": "auth != null && auth.uid === $uid",
+            ".validate": "newData.hasChildren(['name', 'score', 'timestamp', 'uid']) && newData.child('uid').val() === auth.uid && newData.child('score').isNumber() && newData.child('score').val() >= 0 && newData.child('score').val() <= 500000 && (!data.exists() || newData.child('score').val() >= data.child('score').val()) && newData.child('timestamp').val() === now"
+          }
+        }
+      }
+    },
+
+    "presence": {
+      "$uid": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    },
+
+    "replays": {
+      "$uid": {
+        ".read": "auth != null",
+        ".write": "auth != null && auth.uid === $uid"
+      }
+    }
+  }
+}
